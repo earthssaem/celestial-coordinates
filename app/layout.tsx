@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-const siteOrigin = process.env.SITE_ORIGIN ?? "http://localhost:3000";
+const vercelOrigin =
+  process.env.VERCEL_PROJECT_PRODUCTION_URL ?? process.env.VERCEL_URL;
+const siteOrigin =
+  process.env.SITE_ORIGIN ??
+  (vercelOrigin ? `https://${vercelOrigin}` : "http://localhost:3000");
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -51,4 +55,3 @@ export default function RootLayout({
     </html>
   );
 }
-

@@ -103,9 +103,9 @@ function SphereCanvas({ mode, point, showGrid, showLabels, autoRotate = false, p
       const project = (a: number, b: number) => {
         const lon = rad(a);
         const lat = rad(b);
-        let x = Math.cos(lat) * Math.sin(lon);
-        let y = Math.sin(lat);
-        let z = Math.cos(lat) * Math.cos(lon);
+        const x = Math.cos(lat) * Math.sin(lon);
+        const y = Math.sin(lat);
+        const z = Math.cos(lat) * Math.cos(lon);
         const yaw = viewRef.current.yaw;
         const pitch = viewRef.current.pitch;
         const x1 = x * Math.cos(yaw) + z * Math.sin(yaw);
@@ -323,5 +323,4 @@ function ControlSection({label,children}:{label:string;children:React.ReactNode}
 function LabLayout({kicker,title,description,readoutLabel,readout,children}:{kicker:string;title:string;description:string;readoutLabel:string;readout:string;children:React.ReactNode}){return <><section className="lesson-intro"><div><p className="section-kicker">{kicker}</p><h2>{title}</h2><p>{description}</p></div><div className="coordinate-readout"><span>{readoutLabel}</span><strong>{readout}</strong></div></section><section className="lab-grid">{children}</section></>;}
 
 const tabs=[{label:"지구의 경도·위도",short:"지구",icon:"1"},{label:"지평 좌표계",short:"지평",icon:"2"},{label:"적도 좌표계",short:"적도",icon:"3"},{label:"좌표 연습",short:"연습",icon:"4"}];
-export default function Home(){const[active,setActive]=useState(0);const content=useMemo(()=>[<EarthLab key="earth"/>,<HorizonLab key="horizon"/>,<EquatorialLab key="equatorial"/>,<PracticeLab key="practice"/>],[active]);return <main className="app-shell"><header className="site-header"><div className="brand-mark" aria-hidden>C</div><div><p className="eyebrow">EARTH SCIENCE LAB</p><h1>천구 좌표계 실험실</h1></div><span className="teacher-badge">교사용 수업 도구</span></header><nav className="tab-list" aria-label="좌표계 실험 선택">{tabs.map((tab,index)=><button key={tab.label} className={active===index?"tab active":"tab"} onClick={()=>setActive(index)}><span>{tab.icon}</span><b className="tab-full">{tab.label}</b><b className="tab-short">{tab.short}</b></button>)}</nav>{content[active]}<footer>비상교육 지구과학Ⅱ의 좌표계 개념을 바탕으로 구성한 수업용 시뮬레이션</footer></main>;}
-
+export default function Home(){const[active,setActive]=useState(0);const content=useMemo(()=>[<EarthLab key="earth"/>,<HorizonLab key="horizon"/>,<EquatorialLab key="equatorial"/>,<PracticeLab key="practice"/>],[]);return <main className="app-shell"><header className="site-header"><div className="brand-mark" aria-hidden>C</div><div><p className="eyebrow">EARTH SCIENCE LAB</p><h1>천구 좌표계 실험실</h1></div><span className="teacher-badge">교사용 수업 도구</span></header><nav className="tab-list" aria-label="좌표계 실험 선택">{tabs.map((tab,index)=><button key={tab.label} className={active===index?"tab active":"tab"} onClick={()=>setActive(index)}><span>{tab.icon}</span><b className="tab-full">{tab.label}</b><b className="tab-short">{tab.short}</b></button>)}</nav>{content[active]}<footer>비상교육 지구과학Ⅱ의 좌표계 개념을 바탕으로 구성한 수업용 시뮬레이션</footer></main>;}
