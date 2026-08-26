@@ -130,6 +130,7 @@ svg text{font-family:inherit}
       <button class="btn" id="t1p3">적도·본초 자오선 교점 (0°, 0°)</button>
     </div>
     <p class="hint">경도: 본초 자오선 기준 동·서 0°~180° / 위도: 적도 기준 남·북 0°~90°</p>
+    <p class="hint">🖱 그림을 드래그하면 지구본이 회전합니다 (더블클릭: 시점 초기화)</p>
   </aside>
 </section>
 
@@ -405,13 +406,14 @@ document.addEventListener('visibilitychange', ()=>{
 
 /* ══════════════ 탭 1 : 경도와 위도 ══════════════ */
 (function(){
-  const S={lon:127, lat:37.5};
-  const CM = cam(480,378,286,23);
-  const LON0=60;                                    // 정면에 보이는 경도 (그리니치·서울 모두 앞면에)
-  const geo=(lon,lat)=>v3(cos(lat)*cos(lon-LON0), cos(lat)*sin(lon-LON0), sin(lat));
+  // viewLon: 정면에 보이는 경도(기본 60° — 그리니치·서울 모두 앞면), tilt: 내려다보는 각도. 드래그로 조절.
+  const S={lon:127, lat:37.5, viewLon:60, tilt:23};
+  let CM = cam(480,378,286,S.tilt);
+  const geo=(lon,lat)=>v3(cos(lat)*cos(lon-S.viewLon), cos(lat)*sin(lon-S.viewLon), sin(lat));
   const svg=$('#svg1');
 
   function render(){
+    CM = cam(480,378,286,S.tilt);
     const s=[];
     // 지구 원판(바다색) + 윤곽
     s.push(`<circle cx="${CM.cx}" cy="${CM.cy}" r="${CM.R}" fill="#EAF4FB" stroke="#B6C2CE" stroke-width="1.5"/>`);
@@ -429,14 +431,14 @@ document.addEventListener('visibilitychange', ()=>{
     s.push(curve(CM, circ(v3(1,0,0),v3(0,1,0)), {stroke:'#E8768E', width:2.5}));
     // 경선(30° 간격) + 본초 자오선
     for(let lo=0;lo<180;lo+=30){
-      const u=v3(cos(lo-LON0),sin(lo-LON0),0);
+      const u=v3(cos(lo-S.viewLon),sin(lo-S.viewLon),0);
       const main = lo===0;
       s.push(curve(CM, circ(u,v3(0,0,1)), {stroke: main?'#C2255C':'#C9D3DC', width: main?2.5:1.2}));
     }
     {
       const g=CM.pr(geo(0,-6));
       s.push(txt(g.X,g.Y+18,'본초 자오선',{size:15,fill:'#C2255C',op:g.front?1:.4}));
-      const eq=CM.pr(geo(LON0+88,2));
+      const eq=CM.pr(geo(S.viewLon+88,2));
       s.push(txt(eq.X,eq.Y,'적도',{size:15,fill:'#E8768E'}));
     }
     // 극점
@@ -446,7 +448,7 @@ document.addEventListener('visibilitychange', ()=>{
 
     const {lon,lat}=S;
     // 경도 호 (적도면 위, 본초 자오선 → 관측 경선), 파랑
-    const eqPt=lo=>v3(cos(lo-LON0),sin(lo-LON0),0);
+    const eqPt=lo=>v3(cos(lo-S.viewLon),sin(lo-S.viewLon),0);
     s.push(curve(CM,[v3(0,0,0),eqPt(0)],{stroke:'#1971C2',width:1.6,dash:'3 4'}));
     s.push(curve(CM,[v3(0,0,0),eqPt(lon)],{stroke:'#1971C2',width:1.6,dash:'3 4'}));
     if(Math.abs(lon)>0.25){
@@ -455,7 +457,7 @@ document.addEventListener('visibilitychange', ()=>{
       s.push(arcArrow(CM,pts,'#1971C2',5,`경도 ${Math.abs(lon).toFixed(1)}°`, vmul(eqPt(lon*0.5),0.62),{size:19}));
     }
     // 위도 호 (관측 경선 위, 적도 → 관측점), 초록
-    const merPt=la=>v3(cos(la)*cos(lon-LON0),cos(la)*sin(lon-LON0),sin(la));
+    const merPt=la=>v3(cos(la)*cos(lon-S.viewLon),cos(la)*sin(lon-S.viewLon),sin(la));
     s.push(curve(CM,[v3(0,0,0),merPt(lat)],{stroke:'#2F9E44',width:1.6,dash:'3 4'}));
     if(Math.abs(lat)>0.25){
       const n=Math.max(8,Math.ceil(Math.abs(lat)/3));
@@ -482,6 +484,28 @@ document.addEventListener('visibilitychange', ()=>{
       if(app.active===1) render();
     });
   }
+  // 드래그로 지구본 회전 (좌우: 경도 방향, 상하: 내려다보는 각도) — 마우스·터치 공통
+  let drag=null;
+  svg.addEventListener('pointerdown',e=>{
+    drag={x:e.clientX,y:e.clientY};
+    svg.setPointerCapture(e.pointerId);
+    svg.style.cursor='grabbing';
+    e.preventDefault();
+  });
+  svg.addEventListener('pointermove',e=>{
+    if(!drag) return;
+    const k=960/svg.getBoundingClientRect().width;        // 화면픽셀 → viewBox 좌표 보정
+    S.viewLon=norm360(S.viewLon-(e.clientX-drag.x)*k*0.25);
+    S.tilt=Math.max(-80,Math.min(80,S.tilt+(e.clientY-drag.y)*k*0.25));
+    drag={x:e.clientX,y:e.clientY};
+    render();
+  });
+  for(const ev of ['pointerup','pointercancel'])
+    svg.addEventListener(ev,()=>{drag=null;svg.style.cursor='grab';});
+  svg.addEventListener('dblclick',()=>{S.viewLon=60;S.tilt=23;render();});
+  svg.style.cursor='grab';
+  svg.style.touchAction='none';
+
   $('#t1lon').addEventListener('input',e=>{S.lon=+e.target.value;render();});
   $('#t1lat').addEventListener('input',e=>{S.lat=+e.target.value;render();});
   $('#t1p1').addEventListener('click',()=>goto(127,37.5));
