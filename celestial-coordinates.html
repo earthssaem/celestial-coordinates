@@ -147,6 +147,7 @@ svg text{font-family:inherit}
     <div class="termgrid" id="t2terms"></div>
     <button class="btn" id="t2all">전체 보기</button>
     <p class="hint">그림의 선·점을 직접 클릭해도 강조됩니다.</p>
+    <p class="hint">🖱 드래그로 천구 회전 (더블클릭: 시점 초기화)</p>
   </aside>
 </section>
 
@@ -175,6 +176,7 @@ svg text{font-family:inherit}
       <button class="btn spd" data-s="2">2×</button>
     </div>
     <p class="hint">재생 중에는 방위각과 고도가 계속 변합니다. (스페이스바: 재생/정지)</p>
+    <p class="hint">🖱 드래그로 천구 회전 (더블클릭: 시점 초기화)</p>
   </aside>
 </section>
 
@@ -209,6 +211,7 @@ svg text{font-family:inherit}
       <div class="midval" style="color:var(--az)"><span class="vlabel">방위각</span>A = <span id="t4A">—</span></div>
       <div class="midval" style="color:var(--alt)"><span class="vlabel">고도</span>h = <span id="t4h">—</span></div>
     </div>
+    <p class="hint">🖱 드래그로 천구 회전 (더블클릭: 시점 초기화)</p>
   </aside>
 </section>
 
@@ -242,6 +245,7 @@ svg text{font-family:inherit}
     <div class="card">
       <div class="midval" style="color:var(--dec)"><span class="vlabel">태양의 적위</span>δ = <span id="t5dec">+23.5°</span></div>
     </div>
+    <p class="hint">🖱 왼쪽 천구를 드래그하면 회전합니다 (더블클릭: 시점 초기화)</p>
   </aside>
 </section>
 
@@ -282,15 +286,41 @@ function sunDec(lam,eps=23.5){ return Math.asin(sin(lam)*sin(eps))/DEG; }
    비스듬히 내려다보는 정사영 (교과서 그림 III-4~6 시점).
    3D (x=시점 쪽 앞, y=오른쪽, z=위) → screenX = cx + y·R, screenY = cy − z·R·cosT + x·R·sinT
    앞/뒤 판정: 깊이 d = x·cosT + z·sinT (양수 = 앞면) */
-function cam(cx,cy,R,tilt){
-  const ct=cos(tilt), st=sin(tilt);
+function cam(cx,cy,R,tilt,yaw=0){
+  const ct=cos(tilt), st=sin(tilt), cw=cos(yaw), sw=sin(yaw);
   return {
     cx,cy,R,
     pr(p){
-      const d = p.x*ct + p.z*st;               // 양수 = 관측자 쪽(앞면)
-      return {X: cx + p.y*R, Y: cy - p.z*R*ct + p.x*R*st, d, front: d>=-1e-9};
+      const x = p.x*cw - p.y*sw, y = p.x*sw + p.y*cw;   // 세로축(yaw) 회전
+      const d = x*ct + p.z*st;                          // 양수 = 관측자 쪽(앞면)
+      return {X: cx + y*R, Y: cy - p.z*R*ct + x*R*st, d, front: d>=-1e-9};
     }
   };
+}
+// 드래그로 시점 회전 (천구·지구본 공통): 좌우 = 세로축 회전, 상하 = 기울기(±80°)
+function makeDraggable(svg, view, render, def={tilt:23,yaw:0}, vbw=960){
+  let drag=null, moved=0;
+  svg.addEventListener('pointerdown',e=>{
+    drag={x:e.clientX,y:e.clientY}; moved=0;
+    svg.setPointerCapture(e.pointerId);
+    svg.style.cursor='grabbing';
+  });
+  svg.addEventListener('pointermove',e=>{
+    if(!drag) return;
+    const k=vbw/svg.getBoundingClientRect().width;
+    const dx=e.clientX-drag.x, dy=e.clientY-drag.y;
+    moved+=Math.abs(dx)+Math.abs(dy);
+    view.yaw=norm360(view.yaw+dx*k*0.25);
+    view.tilt=Math.max(-80,Math.min(80,view.tilt+dy*k*0.25));
+    drag={x:e.clientX,y:e.clientY};
+    render();
+  });
+  for(const ev of ['pointerup','pointercancel'])
+    svg.addEventListener(ev,()=>{drag=null;svg.style.cursor='grab';});
+  svg.addEventListener('click',e=>{ if(moved>6) e.stopImmediatePropagation(); },true);  // 드래그 직후 클릭 무시
+  svg.addEventListener('dblclick',()=>{Object.assign(view,def);render();});
+  svg.style.cursor='grab';
+  svg.style.touchAction='none';
 }
 
 /* ══════════════ SVG 문자열 헬퍼 ══════════════ */
@@ -532,8 +562,8 @@ document.addEventListener('visibilitychange', ()=>{
     hour:['시간권','천구 북극과 천구 남극을 지나는 대원'],
   };
   const GEO_TERMS=new Set(['ceq','ncp','scp','hour']);
-  const S={mode:'obs', sel:new Set()};
-  const CM = cam(480,376,290,23);
+  const S={mode:'obs', sel:new Set(), tilt:23, yaw:0};
+  let CM = cam(480,376,290,S.tilt);
   const PHI=37.5;
   const svg=$('#svg2');
 
@@ -567,6 +597,7 @@ document.addEventListener('visibilitychange', ()=>{
   }
 
   function render(){
+    CM = cam(480,376,290,S.tilt,S.yaw);
     const s=[];
     const P = v3(0,cos(PHI),sin(PHI));            // 천구 북극 방향(관측자 중심, ENU)
     s.push(`<circle cx="${CM.cx}" cy="${CM.cy}" r="${CM.R}" fill="none" stroke="#DEE2E6" stroke-width="1.5"/>`);
@@ -671,6 +702,7 @@ document.addEventListener('visibilitychange', ()=>{
   svg.addEventListener('click',e=>{
     const t=e.target.closest('[data-term]'); if(t) toggleTerm(t.dataset.term);
   });
+  makeDraggable(svg,S,render);
   $('#t2all').addEventListener('click',()=>{S.sel.clear();render();});
   $('#t2obs').addEventListener('click',()=>{S.mode='obs';render();});
   $('#t2geo').addEventListener('click',()=>{
@@ -684,11 +716,12 @@ document.addEventListener('visibilitychange', ()=>{
 /* ══════════════ 탭 3 : 지평 좌표계 ══════════════ */
 (function(){
   const PHI=37.5;
-  const S={A:150, h:40, showZ:false, playing:false, speed:1, H:0, dec:0};
-  const CM=cam(480,376,290,23);
+  const S={A:150, h:40, showZ:false, playing:false, speed:1, H:0, dec:0, tilt:23, yaw:0};
+  let CM=cam(480,376,290,S.tilt);
   const svg=$('#svg3');
 
   function render(){
+    CM=cam(480,376,290,S.tilt,S.yaw);
     const s=[];
     const P=v3(0,cos(PHI),sin(PHI));
     const below = S.h<0;
@@ -770,6 +803,7 @@ document.addEventListener('visibilitychange', ()=>{
     $('#t3sA').disabled=on; $('#t3sh').disabled=on;
     if(!on) render();
   }
+  makeDraggable(svg,S,render);
   $('#t3sA').addEventListener('input',e=>{S.A=+e.target.value;render();});
   $('#t3sh').addEventListener('input',e=>{S.h=+e.target.value;render();});
   $('#t3zchk').addEventListener('change',e=>{S.showZ=e.target.checked;render();});
@@ -784,14 +818,15 @@ document.addEventListener('visibilitychange', ()=>{
 /* ══════════════ 탭 4 : 적도 좌표계 ══════════════ */
 (function(){
   // 프레임: x=앞(관측자 자오선 방향), y=오른쪽, z=천구 북극. 천구(별+춘분점)가 −θ 방향으로 회전.
-  const S={min:356, dec:7.4, theta:59, playing:false, speed:1, phi:37.5, showHor:false};
-  const CM=cam(480,376,290,23);
+  const S={min:356, dec:7.4, theta:59, playing:false, speed:1, phi:37.5, showHor:false, tilt:23, yaw:0};
+  let CM=cam(480,376,290,S.tilt);
   const svg=$('#svg4');
   const fmtRA=min=>{const h=Math.floor(min/60),m=Math.round(min%60);return `${h}h ${String(m).padStart(2,'0')}m`;};
   const fmtDec=d=>{const sg=d<0?'−':'+';const a=Math.abs(d);let D=Math.floor(a),M=Math.round((a-D)*60);if(M===60){D++;M=0;}return `${sg}${D}° ${String(M).padStart(2,'0')}′`;};
   const eqp=(lam,dec)=>v3(cos(dec)*cos(lam),cos(dec)*sin(lam),sin(dec));
 
   function render(){
+    CM=cam(480,376,290,S.tilt,S.yaw);
     const s=[];
     const aDeg=S.min/4;                     // 적경(°)
     const lamV=-S.theta;                    // 춘분점의 현재 방위(회전 반영)
@@ -870,6 +905,7 @@ document.addEventListener('visibilitychange', ()=>{
       const el=$('#'+id); el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
     }
   }
+  makeDraggable(svg,S,render);
   $('#t4sa').addEventListener('input',e=>{S.min=+e.target.value;render();});
   $('#t4sd').addEventListener('input',e=>{S.dec=+e.target.value;render();});
   $('#t4play').addEventListener('click',()=>setPlay(!S.playing));
@@ -894,12 +930,13 @@ document.addEventListener('visibilitychange', ()=>{
 /* ══════════════ 탭 5 : 태양의 적위와 남중 고도 ══════════════ */
 (function(){
   const EPS=23.5;
-  const S={lam:90, phi:37.5};
-  const CA=cam(280,300,215,23);
+  const S={lam:90, phi:37.5, tilt:23, yaw:0};
+  let CA=cam(280,300,215,S.tilt);
   const svgA=$('#svg5a'), svgB=$('#svg5b');
   const ecl=lam=>v3(cos(lam), sin(lam)*cos(EPS), sin(lam)*sin(EPS));
 
   function render(){
+    CA=cam(280,300,215,S.tilt,S.yaw);
     const dec=sunDec(S.lam,EPS);
     /* ── 왼쪽: 천구 + 황도 ── */
     const s=[];
@@ -1010,6 +1047,7 @@ document.addEventListener('visibilitychange', ()=>{
     let diff=norm360(target-from); if(diff>180) diff-=360;   // 최단 방향으로 황도를 따라 이동
     addTween(1.0, e=>{ S.lam=norm360(from+diff*e); if(app.active===5) render(); });
   }
+  makeDraggable(svgA,S,render,{tilt:23,yaw:0},560);
   $$('#tab5 .ssn').forEach(b=>b.addEventListener('click',()=>gotoLam(+b.dataset.l)));
   $('#t5lam').addEventListener('input',e=>{S.lam=+e.target.value;render();});
   $('#t5phi').addEventListener('input',e=>{S.phi=+e.target.value;render();});
