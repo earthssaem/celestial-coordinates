@@ -730,11 +730,12 @@ document.addEventListener('visibilitychange', ()=>{
     s.push(curve(CM, circ(v3(1,0,0), v3(0,sin(PHI),-cos(PHI))), {stroke:'#4DABF7',width:1.4,op:.75}));
     s.push(curve(CM,[vmul(P,-1),P],{stroke:'#CED4DA',width:1,dash:'4 5'}));
     { const q=CM.pr(P); s.push(dotEl(q.X,q.Y,4,'#1971C2',{op:q.front?1:.4})); s.push(txt(q.X+10,q.Y-6,'천구 북극',{size:14,fill:'#1971C2',anchor:'start'})); }
-    // 일주권 (현재 위치가 지나는, 천구 적도와 평행한 소원)
-    const eq=horToEq(S.A,S.h,PHI);
-    { const u=v3(1,0,0), v=v3(0,sin(PHI),-cos(PHI));
+    // 일주권 (천구 적도와 평행한 소원) — 재생 중에만 궤적 표시
+    if(S.playing){
+      const eq=horToEq(S.A,S.h,PHI);
+      const u=v3(1,0,0), v=v3(0,sin(PHI),-cos(PHI));
       s.push(curve(CM, circ(u,v,0,360,180,cos(eq.dec),vmul(P,sin(eq.dec))), {stroke:'#ADB5BD',width:1.4,backDash:'4 5'}));
-      // 라벨: 일주권이 자오선을 지나는 남중점 부근 (화면 상단 중앙, 여백이 넓음)
+      // 라벨: 일주권이 자오선을 지나는 남중점 부근
       const q=CM.pr(v3(0,-sin(PHI-eq.dec),cos(PHI-eq.dec)));
       s.push(txt(q.X-12,q.Y-10,'일주권',{size:14,fill:'#868E96',anchor:'end'}));
     }
