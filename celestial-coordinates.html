@@ -22,12 +22,16 @@ header{
 }
 header h1{font-size:16px;font-weight:700;color:#495057;white-space:nowrap}
 nav{display:flex;gap:6px;flex:1;justify-content:center}
+footer{
+  height:28px;display:flex;align-items:center;justify-content:center;
+  background:#fff;border-top:1px solid var(--bd);font-size:12px;color:var(--sub);
+}
 .tabbtn{
   font-size:16px;padding:7px 14px;border:1px solid var(--bd);border-radius:8px;
   background:#fff;cursor:pointer;color:#495057;white-space:nowrap;
 }
 .tabbtn.active{background:var(--hi);border-color:var(--hi);color:#fff;font-weight:700}
-main{height:calc(100% - 52px)}
+main{height:calc(100% - 52px - 28px)}
 .tab{display:none;height:100%}
 .tab.active{display:flex}
 .stage{flex:7;min-width:0;display:flex;align-items:center;justify-content:center;padding:6px;gap:6px}
@@ -1072,5 +1076,6 @@ requestAnimationFrame(t=>{last=t;requestAnimationFrame(loop);});
   console.log('[검증] 남중 고도: 하지', (90-37.5+sunDec(90)).toFixed(1), '/ 동지', (90-37.5+sunDec(270)).toFixed(1), '/ 춘분', (90-37.5+sunDec(0)).toFixed(1));
 })();
 </script>
+<footer>© 2026 제작: 김연경(earthssaem@gmail.com)</footer>
 </body>
 </html>
